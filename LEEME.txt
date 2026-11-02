@@ -1,0 +1,16 @@
+TORRES PRO - PRIMERA VERSION
+1. Abre plantilla_datos.csv en Excel.
+2. Reemplaza la fila EJEMPLO por tus registros reales. No cambies los nombres de las columnas.
+3. Guarda como CSV UTF-8 (delimitado por comas).
+4. En la aplicación, pulsa CARGAR ARCHIVO CSV y selecciona el archivo.
+5. Busca por número de estructura o por vértice.
+6. Usa EXPORTAR CSV para descargar una copia de la base.
+
+Para instalar como aplicación Android:
+- La aplicación debe publicarse en un sitio HTTPS (por ejemplo GitHub Pages).
+- Luego abre el enlace en Chrome Android > menú ⋮ > Instalar aplicación / Añadir a pantalla principal.
+- Después de abrirla una vez con internet, el contenido de la app queda disponible offline.
+- Los datos CSV se guardan localmente en el teléfono cuando se cargan.
+
+IMPORTANTE: Esta versión inicial aún no incluye el registro definitivo de las fotografías.
+Verifica todos los valores antes de utilizarlos en terreno.

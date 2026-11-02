@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12304a">
+<link rel="manifest" href="manifest.json">
+<title>TORRES PRO</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#17212b;background:#eef2f5}
+*{box-sizing:border-box}body{margin:0}.top{background:#12304a;color:white;padding:22px 18px}
+h1{margin:0;font-size:25px;letter-spacing:1px}.top p{margin:6px 0 0;color:#d4e3ee;font-size:13px}
+main{max-width:760px;margin:18px auto;padding:0 14px}
+.panel{background:white;border-radius:14px;padding:17px;margin-bottom:14px;box-shadow:0 2px 10px #132b3b12}
+label{display:block;font-weight:bold;font-size:14px;margin-bottom:7px}
+input,select{width:100%;padding:13px;border:1px solid #bdc8d1;border-radius:9px;font-size:16px;background:white}
+button,.filebtn{border:0;border-radius:9px;padding:12px 14px;font-size:14px;font-weight:bold;cursor:pointer}
+.primary{background:#12304a;color:white}.secondary{background:#e4edf3;color:#12304a}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.result{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:#f3f6f8;border-radius:8px;padding:10px;min-width:0}
+.item small{display:block;color:#60717e;font-size:11px;margin-bottom:5px}
+.item strong{font-size:14px;overflow-wrap:anywhere}
+.status{font-size:13px;color:#52616c;margin-top:9px}
+.empty{color:#60717e;text-align:center;padding:18px 4px}
+.hidden{display:none!important}
+@media(max-width:480px){.result{grid-template-columns:1fr 1fr}.actions button{flex:1}}
+</style>
+</head>
+<body>
+<header class="top"><h1>TORRES PRO</h1><p>Consulta técnica de estructuras · Modo sin conexión</p></header>
+<main>
+<section class="panel">
+<label for="mode">Tipo de búsqueda</label>
+<select id="mode"><option value="tower">Número de estructura</option><option value="vertex">Vértice</option></select>
+<div style="height:10px"></div>
+<label for="search">Ingresa el dato que buscas</label>
+<input id="search" type="search" placeholder="Ej.: 876V2 o vértice">
+<div class="actions"><button class="primary" id="find">BUSCAR</button><button class="secondary" id="clear">LIMPIAR</button></div>
+<div class="status" id="count">Base de datos: 0 registros cargados.</div>
+</section>
+<section class="panel">
+<div id="empty" class="empty">Carga la base de datos para comenzar la consulta.</div>
+<div id="results"></div>
+</section>
+<section class="panel">
+<strong>Administrar base de datos</strong>
+<p class="status">Selecciona el archivo CSV de TORRES PRO. La aplicación guardará los registros en este teléfono para consultarlos sin internet.</p>
+<div class="actions">
+<label class="filebtn secondary" for="csvfile">CARGAR ARCHIVO CSV</label>
+<input class="hidden" id="csvfile" type="file" accept=".csv,text/csv">
+<button class="secondary" id="export">EXPORTAR CSV</button>
+</div>
+<div class="status" id="dbstatus">Todavía no hay datos guardados en este dispositivo.</div>
+</section>
+<section class="panel">
+<strong>Campos técnicos incluidos</strong>
+<p class="status">N° de Estructura · Vértices · Estación [m] · Este [m] · Norte [m] · Altura [m.s.n.m] · Vano Adelante [m] · Ángulo Deflexión [°dec] · Zona Geográfica · Tramo constructivo · Tipo de estructura · Función · Altura nominal.</p>
+</section>
+</main>
+<script>
+const fields=["N° de Estructura","Vértices","Estación [m]","Este [m]","Norte [m]","Altura [m.s.n.m]","Vano Adelante [m]","Ángulo Deflexión [°dec]","Zona Geográfica","Tramo constructivo","Tipo de estructura","Función","Altura nominal"];
+let records=[];
+const $=id=>document.getElementById(id);
+function parseCSV(text){
+ const rows=[];let row=[],cell="",q=false;
+ for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];
+  if(c==='"'&&q&&n==='"'){cell+='"';i++}
+  else if(c==='"')q=!q;
+  else if(c===','&&!q){row.push(cell);cell=""}
+  else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&n==='\n')i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell=""}
+  else cell+=c;
+ }
+ row.push(cell);if(row.some(x=>x.trim()))rows.push(row);
+ return rows;
+}
+function normalize(s){return (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase()}
+function save(){try{localStorage.setItem("torrespro_data",JSON.stringify(records));$("dbstatus").textContent="Base guardada en este teléfono. Disponible sin internet."; $("count").textContent=`Base de datos: ${records.length} registros cargados.`}catch(e){$("dbstatus").textContent="No se pudo guardar la base. Revisa el espacio disponible."}}
+function load(){try{records=JSON.parse(localStorage.getItem("torrespro_data")||"[]")}catch(e){records=[]}
+ $("count").textContent=`Base de datos: ${records.length} registros cargados.`;$("dbstatus").textContent=records.length?"Base guardada en este teléfono. Disponible sin internet.":"Todavía no hay datos guardados en este dispositivo."}
+function render(list){
+ $("results").innerHTML="";$("empty").classList.toggle("hidden",list.length>0);
+ if(!list.length){$("empty").textContent=records.length?"Estructura no encontrada. Revisa el número o el vértice.":"Carga la base de datos para comenzar la consulta.";return}
+ list.forEach(r=>{
+  const card=document.createElement("div");card.style.marginBottom="18px";
+  const title=document.createElement("h3");title.textContent=r[fields[0]]||"Registro";card.appendChild(title);
+  const grid=document.createElement("div");grid.className="result";
+  fields.forEach((f,i)=>{const d=document.createElement("div");d.className="item";const sm=document.createElement("small");sm.textContent=f;const st=document.createElement("strong");st.textContent=r[f]??"";d.append(sm,st);grid.appendChild(d)});
+  card.appendChild(grid);
+  const act=document.createElement("div");act.className="actions";
+  const copy=document.createElement("button");copy.className="secondary";copy.textContent="COPIAR DATOS";copy.onclick=()=>navigator.clipboard.writeText(fields.map(f=>f+"\t"+(r[f]??"")).join("\n")).then(()=>copy.textContent="COPIADO");
+  act.appendChild(copy);card.appendChild(act);$("results").appendChild(card);
+ });
+}
+$("find").onclick=()=>{
+ const q=normalize($("search").value);if(!q){render([]);return}
+ const mode=$("mode").value;
+ const list=records.filter(r=>normalize(mode==="tower"?r[fields[0]]:r[fields[1]]).includes(q));
+ render(list);
+};
+$("search").addEventListener("keydown",e=>{if(e.key==="Enter")$("find").click()});
+$("clear").onclick=()=>{$("search").value="";$("results").innerHTML="";$("empty").classList.remove("hidden");$("empty").textContent="Escribe un número de estructura o vértice para buscar.";};
+$("csvfile").onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ const rows=parseCSV(await file.text());if(rows.length<2){$("dbstatus").textContent="El CSV no contiene registros.";return}
+ const headers=rows[0].map(x=>x.trim().replace(/^\uFEFF/,""));
+ const missing=fields.filter(f=>!headers.includes(f));
+ if(missing.length){$("dbstatus").textContent="Faltan columnas: "+missing.join(", ");return}
+ records=rows.slice(1).map(row=>Object.fromEntries(fields.map(f=>[f,row[headers.indexOf(f)]??""])));
+ save();$("dbstatus").textContent=`Se cargaron ${records.length} registros correctamente.`;$("csvfile").value="";
+};
+$("export").onclick=()=>{
+ if(!records.length){$("dbstatus").textContent="No hay datos para exportar.";return}
+ const esc=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+ const csv=[fields.map(esc).join(","),...records.map(r=>fields.map(f=>esc(r[f])).join(","))].join("\r\n");
+ const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="TORRES_PRO_datos.csv";a.click();URL.revokeObjectURL(a.href);
+};
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
+load();
+</script>
+</body></html>
